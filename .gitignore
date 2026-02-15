@@ -1,0 +1,28 @@
+# --- Build Directories ---
+build/
+bin/
+lib/
+cmake-build-*/
+
+# --- CMake generated files ---
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CTestTestfile.cmake
+*.cmake
+!cmake/dependencies.cmake
+
+# --- IDE & OS ---
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+*.user
+
+# --- Executables ---
+*.exe
+*.out
+*.app
