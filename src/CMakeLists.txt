@@ -18,16 +18,33 @@ target_link_libraries(DevSpace
         logic
 )
 
-add_custom_command(TARGET DevSpace POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/devspace"
-    
+file(GLOB_RECURSE TEMPLATE_FILES
+    "${CMAKE_SOURCE_DIR}/src/templates/*"
+)
+
+file(GLOB_RECURSE STATIC_FILES
+    "${CMAKE_SOURCE_DIR}/src/static/*"
+)
+
+add_custom_target(assets ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${CMAKE_SOURCE_DIR}/devspace/templates"
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        "${CMAKE_SOURCE_DIR}/devspace/static"
+
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/src/templates"
         "${CMAKE_SOURCE_DIR}/devspace/templates"
-    
+
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/src/static"
         "${CMAKE_SOURCE_DIR}/devspace/static"
-        
-    COMMENT "Moving binary and assets to root devspace directory..."
+
+    DEPENDS
+        ${TEMPLATE_FILES}
+        ${STATIC_FILES}
+
+    COMMENT "Copying templates and static assets to devspace..."
 )
+
+add_dependencies(DevSpace assets)
