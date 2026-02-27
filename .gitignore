@@ -3,6 +3,7 @@ build/
 bin/
 lib/
 cmake-build-*/
+devspace/
 
 # --- CMake generated files ---
 CMakeCache.txt
