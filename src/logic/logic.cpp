@@ -3,10 +3,11 @@
 int App::run(std::string title){
     crow::SimpleApp app;
 
-    CROW_ROUTE(app, "/")([title](){
-        return title;
+    CROW_ROUTE(app, "/")([](){
+        auto page = crow::mustache::load("login.html");
+        return page.render();
     });
 
-    app.port(18080).run();
+    app.port(80).run();
     return 0;
 };
