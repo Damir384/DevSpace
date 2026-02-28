@@ -19,10 +19,12 @@ target_link_libraries(DevSpace
 )
 
 file(GLOB_RECURSE TEMPLATE_FILES
+    CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/templates/*"
 )
 
 file(GLOB_RECURSE STATIC_FILES
+    CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/src/static/*"
 )
 
