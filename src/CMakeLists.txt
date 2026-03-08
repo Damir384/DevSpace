@@ -11,10 +11,12 @@ set_target_properties(DevSpace PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/devspace"
 )
 
+add_subdirectory(secure)
 add_subdirectory(logic)
 
 target_link_libraries(DevSpace
     PRIVATE
+        secure
         logic
 )
 
