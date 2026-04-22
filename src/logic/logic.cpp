@@ -1,55 +1,80 @@
 #include "logic.hpp"
 #include "secure.hpp"
+#include "crow/middlewares/cookie_parser.h"
+#include "crow/middlewares/session.h"
+#include <pwd.h>
 
-int App::run(std::string title){
+using Session = crow::SessionMiddleware<crow::InMemoryStore>;
+
+// Добавить парсер настроек из файла конфигурации
+
+// Проверка авторизации и сборка базового контекса
+static bool base_context(crow::mustache::context& ctx, Session::context& session) {
+    std::string user = session.get("username", "");
     
+    if (user.empty()) {
+        return false;
+    }
 
-    crow::SimpleApp app;
+    std::string realname = session.get("display_name", "");
+    
+    ctx["username"] = user;
+    ctx["display_name"] = realname.empty() ? user : realname + " (" + user + ")";
+    
+    return true;
+}
 
-    CROW_ROUTE(app, "/").methods("GET"_method)([](){
+int App::run(std::string title) {
+    crow::App<crow::CookieParser, Session> app{
+        Session{ crow::InMemoryStore{} }
+    };
+
+    CROW_ROUTE(app, "/")
+    .methods("GET"_method)([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
         crow::mustache::context ctx;
-        ctx["title"] = "login";
-        auto page = crow::mustache::load("login.mustache");
-        return page.render(ctx);
-    });
-    
-    CROW_ROUTE(app, "/").methods("POST"_method)
-    ([](const crow::request& req){
-        // Парсим тело POST-запроса. Добавляем "?", чтобы парсер Crow 
-        // воспринял строку параметров корректно (как в URL)
-        auto params = crow::query_string("?" + req.body);
 
-        // Пытаемся достать "username" из параметров формы, если его нет — берем пустую строку
+        if (base_context(ctx, session)) {
+            ctx["title"] = "Dashboard";
+            return crow::response(crow::mustache::load("index.mustache").render(ctx));
+        } else {
+            ctx["title"] = "Login";
+            return crow::response(crow::mustache::load("login.mustache").render(ctx));
+        }
+    });
+
+    CROW_ROUTE(app, "/").methods("POST"_method)
+    ([&app](const crow::request& req) {
+        auto params = crow::query_string("?" + req.body);
         std::string user = params.get("username") ? params.get("username") : "";
-        
-        // Аналогично достаем "password"
         std::string pass = params.get("password") ? params.get("password") : "";
 
-        // Вызываем нашу функцию проверки через PAM (из secure.cpp)
-        if(auth_user(user, pass))
-        {
-            // Если успех: создаем контекст для шаблона Mustache
-            crow::mustache::context ctx;
-            ctx["user"] = user; // Передаем имя пользователя в шаблон
-
-            // Загружаем файл index.mustache (главная страница после входа)
-            auto page = crow::mustache::load("index.mustache");
+        if (auth_user(user, pass)) {
+            // Получаем данные пользователя и записываем их в сессию
+            auto& session = app.get_context<Session>(req);
+            struct passwd *pw = getpwnam(user.c_str());
+            std::string gecos(pw->pw_gecos);
+            std::string realName = gecos.substr(0, gecos.find(','));
             
-            // Рендерим страницу с данными пользователя и возвращаем клиенту
-            return crow::response(page.render(ctx));
+            if (!realName.empty()) session.set("display_name", realName);
+            session.set("username", user);
+            session.set("uid", std::to_string(pw->pw_uid));
+            session.set("gid", std::to_string(pw->pw_gid));
+            session.set("home", std::string(pw->pw_dir));
+            session.set("shell", std::string(pw->pw_shell));
+
+            // Перенаправляем на главную после логина
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
         }
 
-        // Если авторизация провалилась: готовим контекст с ошибкой
         crow::mustache::context ctx;
-        ctx["error"] = "Invalid login"; // Текст ошибки для отображения в html
-
-        // Загружаем обратно страницу входа login.mustache
-        auto page = crow::mustache::load("login.mustache");
-        
-        // Возвращаем страницу входа с текстом ошибки
-        return crow::response(page.render(ctx));
+        ctx["error"] = "Invalid login";
+        return crow::response(crow::mustache::load("login.mustache").render(ctx));
     });
 
-    app.port(80).run();
+    app.port(80).multithreaded().run();
     return 0;
-};
+}
