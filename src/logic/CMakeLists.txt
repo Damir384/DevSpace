@@ -10,6 +10,7 @@ target_include_directories(logic
 
 target_link_libraries(logic
     PUBLIC
+        utils
         secure
         Crow::Crow
 )

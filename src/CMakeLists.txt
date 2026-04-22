@@ -13,9 +13,11 @@ set_target_properties(DevSpace PROPERTIES
 
 add_subdirectory(secure)
 add_subdirectory(logic)
+add_subdirectory(utils)
 
 target_link_libraries(DevSpace
     PRIVATE
+        utils
         secure
         logic
 )

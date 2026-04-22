@@ -14,5 +14,6 @@ int main()
 {
     chdir(getExecutableDir().c_str());
     App app;
+    // app.loglevel(crow::LogLevel::Warning); 
     app.run("Hello world!");
 }
