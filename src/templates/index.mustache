@@ -1,2 +1,54 @@
-<h1>Welcome {{display_name}}</h1>
-<p>Login successful</p>
+<!DOCTYPE html>
+<html  lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/pico.colors.min.css">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <nav class="pico-background-slate-950" style="padding: 0 24px;">
+        <ul>
+            <li>
+                <a href="/"><img src="/static/img/favicon.ico" alt="logo" width="64px"></a>
+            </li>
+            <li><kbd id="cpu-temp"></kbd></li>
+            <li><kbd id="ram-usage"></kbd></li>
+        </ul>
+        <ul>
+            <li>
+                <details class="dropdown">
+                    <summary>{{ display_name }}</summary>
+                    <ul class="rtl">
+                        <li>
+                            <a href="/logout" class="contrast">logout</a>
+                        </li>
+                    </ul>
+                </details>
+            </li>
+        </ul>
+    </nav>
+
+    <script>
+    async function updateStats() {
+        try {
+            const response = await fetch('/api/system/stats');
+            
+            if (!response.ok) throw new Error('Server is down.');
+
+            const data = await response.json();
+
+            document.getElementById('cpu-temp').innerText = "CPU: "+data.cpu_temp.toFixed(1);
+            document.getElementById('ram-usage').innerText = "RAM: "+data.ram_used.toFixed(1)+"/"+data.ram_total.toFixed(1)+" ("+data.ram_percent.toFixed(1)+")";
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    updateStats();
+
+    setInterval(updateStats, 30000);
+    </script>
+</body>
+</html>

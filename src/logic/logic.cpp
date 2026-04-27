@@ -1,5 +1,6 @@
 #include "logic.hpp"
 #include "secure.hpp"
+#include "utils.hpp"
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include <pwd.h>
@@ -36,6 +37,13 @@ int App::run(std::string title) {
 
         if (base_context(ctx, session)) {
             ctx["title"] = "Dashboard";
+
+            SystemMonitor monitor;
+            auto ram = monitor.get_ram_info();
+
+            ctx["cpu"] = monitor.get_cpu_temp();
+            ctx["ram"] = std::to_string(ram.used) + " / " + std::to_string(ram.total) + " MB (" + std::to_string(static_cast<int>(ram.percent)) + "%)";
+
             return crow::response(crow::mustache::load("index.mustache").render(ctx));
         } else {
             ctx["title"] = "Login";
@@ -73,6 +81,32 @@ int App::run(std::string title) {
         crow::mustache::context ctx;
         ctx["error"] = "Invalid login";
         return crow::response(crow::mustache::load("login.mustache").render(ctx));
+    });
+
+    CROW_ROUTE(app, "/favicon.ico")
+    ([]{
+        crow::response res;
+        res.set_static_file_info("static/img/favicon.ico");
+        return res;
+    });
+
+    CROW_ROUTE(app, "/api/system/stats")
+    ([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        if (session.get("username", "").empty()) {
+            return crow::response(403, "");
+        }
+
+        SystemMonitor monitor;
+        auto ram = monitor.get_ram_info();
+
+        crow::json::wvalue x;
+        x["cpu_temp"] = monitor.get_cpu_temp();
+        x["ram_used"] = static_cast<long>(ram.used);
+        x["ram_total"] = static_cast<long>(ram.total);
+        x["ram_percent"] = ram.percent;
+
+        return crow::response(std::move(x));
     });
 
     app.port(80).multithreaded().run();
