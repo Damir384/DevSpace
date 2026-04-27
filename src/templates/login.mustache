@@ -1,49 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
-{{> head.mustache }}
+<html lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/pico.min.css">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+        
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        form {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
 <body>
-    {{> header.mustache }}
-
-    {{user}}
-
-{{#error}}
-<p style="color:red">{{error}}</p>
-{{/error}}
-    <div>
-        <div class="col-xl-2 col-lg-3 col-md-3 col-sm-5 col-12 translate-middle start-50 top-50 position-absolute">
-            <div class="card">
-                <div class="card-header text-bg-dark text-center">
-                    <h3>Авторизация</h3>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Linux username</label>
-                            <input
-                                type="text"
-                                class="form-control"
-                                name="username"
-                                aria-describedby="helpId"
-                                placeholder="username"
-                            />
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Linux password</label>
-                            <input
-                                type="password"
-                                class="form-control"
-                                name="password"
-                                aria-describedby="helpId"
-                                placeholder="password"
-                            />
-                        </div>
-                        <div class="mb-3 text-center">
-                            <button class="btn btn-success">Авторизоваться</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
+    <article class="login-card">
+        <header>
+            <strong>DevSpace Auth</strong>
+        </header>
+        <form method="post">
+            <label for="username" class="form-label">Linux username</label>
+            <input
+                type="text"
+                class="form-control"
+                name="username"
+                id="username"
+                aria-describedby="helpId"
+                placeholder="username"
+            />
+            <label for="password" class="form-label">Linux password</label>
+            <input
+                type="password"
+                class="form-control"
+                name="password"
+                id="password"
+                aria-describedby="helpId"
+                placeholder="password"
+            />
+            <button class="btn btn-success">Авторизоваться</button>
+        </form>
+    </article>
 </body>
 </html>
