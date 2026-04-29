@@ -16,5 +16,6 @@ public:
 
 class ProjectManager {
 public:
+    //TODO сделать функцию проверки существования директории хранения проектов
     static std::vector<std::string> get_user_projects(const std::string& base_path);
 };
