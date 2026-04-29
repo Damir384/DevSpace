@@ -1,4 +1,7 @@
 #include "utils.hpp"
+#include <sys/sysinfo.h>
+#include <fstream>
+#include <filesystem>
 
 double SystemMonitor::get_cpu_temp() {
     std::ifstream temp_file("/sys/class/thermal/thermal_zone0/temp");
@@ -23,4 +26,21 @@ SystemMonitor::RamStats SystemMonitor::get_ram_info() {
     double percent = (static_cast<double>(used_ram) / total_ram) * 100.0;
 
     return {total_ram, used_ram, percent};
+}
+
+namespace fs = std::filesystem;
+
+std::vector<std::string> ProjectManager::get_user_projects(const std::string& base_path) {
+    std::vector<std::string> projects;
+    try {
+        if (fs::exists(base_path) && fs::is_directory(base_path)) {
+            for (const auto& entry : fs::directory_iterator(base_path)) {
+                if (entry.is_directory()) {
+                    projects.push_back(entry.path().filename().string());
+                }
+            }
+        }
+    } catch (...) {
+    }
+    return projects;
 }
