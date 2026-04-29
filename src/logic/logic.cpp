@@ -37,6 +37,14 @@ int App::run(std::string title) {
 
         if (base_context(ctx, session)) {
             ctx["title"] = "Dashboard";
+            std::string user_home = "/var/lib/devspace/projects/" + session.get("username", ""); //TODO сделать получение директории хранения проектов из файла конфигурации
+            std::vector<std::string> projects = ProjectManager::get_user_projects(user_home);
+            std::vector<crow::json::wvalue> proj_list;
+
+            for (const auto& name : projects) {
+                proj_list.push_back(crow::json::wvalue({{"name", name}}));
+            }
+            ctx["projects"] = std::move(proj_list);
 
             return crow::response(crow::mustache::load("index.mustache").render(ctx));
         } else {
