@@ -2,6 +2,8 @@
 #include <sys/sysinfo.h>
 #include <fstream>
 #include <filesystem>
+#include <regex>
+#include <unistd.h>
 
 double SystemMonitor::get_cpu_temp() {
     std::ifstream temp_file("/sys/class/thermal/thermal_zone0/temp");
@@ -43,4 +45,29 @@ std::vector<std::string> ProjectManager::get_user_projects(const std::string& ba
     } catch (...) {
     }
     return projects;
+}
+
+ProjectStatus ProjectManager::create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid) {
+    if (proj_name.empty() || proj_name.length() > 255) return ProjectStatus::NameTooLong;
+    
+    std::regex name_regex("^[a-zA-Z0-9_-]+$"); //TODO Изменить функцию для поддержки других языков
+    if (!std::regex_match(proj_name, name_regex)) return ProjectStatus::InvalidName;
+
+    fs::path full_path = fs::path(base_path) / proj_name;
+
+    if (fs::exists(full_path)) return ProjectStatus::AlreadyExists;
+
+    try {
+        if (fs::create_directories(full_path)) {
+            if (chown(full_path.c_str(), uid, gid) != 0) {
+                return ProjectStatus::NoPermissions;
+            }
+            return ProjectStatus::Success;
+        }
+    } catch (const fs::filesystem_error& e) {
+        // Тут можно логгировать e.code()
+        return ProjectStatus::FileSystemError;
+    }
+
+    return ProjectStatus::UnknownError;
 }
