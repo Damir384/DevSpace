@@ -1,56 +1,46 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="dark">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/w3.css">
     <title>{{ title }}</title>
-    <style>
-        body {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 1rem;
-        }
-        
-        .login-card {
-            width: 100%;
-            max-width: 450px;
-        }
-
-        form {
-            margin-bottom: 0;
-        }
-    </style>
 </head>
 <body>
-    <article class="login-card">
-        <header>
-            <strong>DevSpace Auth</strong>
-        </header>
-        <form method="post">
-            <label for="username" class="form-label">Linux username</label>
-            <input
-                type="text"
-                class="form-control"
-                name="username"
-                id="username"
-                aria-describedby="helpId"
-                placeholder="username"
-            />
-            <label for="password" class="form-label">Linux password</label>
-            <input
-                type="password"
-                class="form-control"
-                name="password"
-                id="password"
-                aria-describedby="helpId"
-                placeholder="password"
-            />
-            <button class="btn btn-success">Авторизоваться</button>
-        </form>
-    </article>
+    <div class="w3-display-container w3-black" style="height:100vh;">
+    <div class="w3-display-middle">
+        <div class="w3-card-4 w3-border-deep-purple w3-border">
+            <div class="w3-container w3-center w3-deep-purple">
+                <h2>DevSpace Auth</h2>
+            </div>
+
+            <form class="w3-container w3-black" method="post">
+                <label for="username">Linux username</label>
+                <input
+                    type="text"
+                    class="w3-input w3-black w3-border w3-border-deep-purple"
+                    name="username"
+                    id="username"
+                    aria-describedby="helpId"
+                    placeholder="username"
+                    required
+                />
+                <label for="password">Linux password</label>
+                <input
+                    type="password"
+                    class="w3-input w3-black w3-border w3-border-deep-purple"
+                    name="password"
+                    id="password"
+                    aria-describedby="helpId"
+                    placeholder="password"
+                    required
+                />
+                <div class="w3-padding-16">
+                    <button type="submit" class="w3-button w3-block w3-deep-purple">Авторизоваться</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 </body>
 </html>
