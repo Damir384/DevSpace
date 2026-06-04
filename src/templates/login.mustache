@@ -1,12 +1,7 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="/static/css/w3.css">
-    <title>{{ title }}</title>
-</head>
+{{> head.mustache }}
 <body>
+    {{> alerts.mustache}}
+
     <div class="w3-display-container w3-black" style="height:100vh;">
     <div class="w3-display-middle">
         <div class="w3-card-4 w3-border-deep-purple w3-border">
@@ -14,7 +9,7 @@
                 <h2>DevSpace Auth</h2>
             </div>
 
-            <form class="w3-container w3-black" method="post">
+            <form class="w3-container w3-black" method="post" action="/login/">
                 <label for="username">Linux username</label>
                 <input
                     type="text"
