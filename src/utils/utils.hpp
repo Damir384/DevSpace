@@ -30,3 +30,4 @@ public:
     ProjectStatus create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid);
     static std::vector<std::string> get_user_projects(const std::string& base_path);
 };
+

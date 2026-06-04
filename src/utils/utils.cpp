@@ -32,6 +32,19 @@ SystemMonitor::RamStats SystemMonitor::get_ram_info() {
 
 namespace fs = std::filesystem;
 
+// bool projects_directory_exist(std::string& path){
+//     if (fs::exists(path)) {
+//         if (fs::is_directory(path)) {
+//             return true;
+//         } else {
+//             return false;
+//         }
+//     } else {
+//         fs::create_directory(path);
+
+//     }
+// }
+
 std::vector<std::string> ProjectManager::get_user_projects(const std::string& base_path) {
     std::vector<std::string> projects;
     try {
@@ -58,16 +71,27 @@ ProjectStatus ProjectManager::create_project(const std::string& base_path, const
     if (fs::exists(full_path)) return ProjectStatus::AlreadyExists;
 
     try {
-        if (fs::create_directories(full_path)) {
+        fs::path base(base_path);
+        
+        if (!fs::exists(base)) {
+            fs::create_directories(base); 
+            if (chown(base.c_str(), uid, gid) != 0) {
+                return ProjectStatus::NoPermissions;
+            }
+            fs::permissions(base, fs::perms::owner_all | fs::perms::group_read | fs::perms::group_exec);
+        }
+
+        if (fs::create_directory(full_path)) {
             if (chown(full_path.c_str(), uid, gid) != 0) {
                 return ProjectStatus::NoPermissions;
             }
             return ProjectStatus::Success;
         }
     } catch (const fs::filesystem_error& e) {
-        // Тут можно логгировать e.code()
         return ProjectStatus::FileSystemError;
     }
 
     return ProjectStatus::UnknownError;
 }
+
+
