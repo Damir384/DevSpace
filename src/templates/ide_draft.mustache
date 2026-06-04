@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/w3.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/icon.css">
+    <style>
+        html, body { height: 100%; margin: 0; overflow: hidden; }
+        .main-content { margin-left: 300px; height: calc(100vh - 75px); }
+        #editor-container { width: 100%; height: 100%; }
+    </style>
+    <title>{{ title }}</title>
+</head>
+<body class="bg-color" style="height: 100vh">
+    <div class="w3-bar bg-color">
+        <div class="w3-container">
+            <a href="/" class="w3-bar-item w3-button">
+                <h2><img src="/static/img/favicon.ico" alt="logo" width="64px"> DevSpace <i class="material-icons">home</i></h2>
+            </a>
+        </div>
+    </div>
+
+    <div class="w3-sidebar second-bg-color" style="width: 300px;">
+
+    </div>
+
+    <div class="main-content">
+        <div class="w3-bar second-bg-color">
+            <div class="w3-bar-item">
+                Язык:
+                <select id="language-select" class="w3-selectely-text-accent w3-border-0 second-bg-color ">
+                </select>
+            </div>
+        </div>
+
+        <div id="editor-container"></div>
+    </div>
+
+    <!-- Monaco Loader Settings -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+
+        require(['vs/editor/editor.main'], function() {
+            var draculaTheme = {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: '', background: '282a36' },
+                    { token: 'comment', foreground: '6272a4' },
+                    { token: 'string', foreground: 'f1fa8c' },
+                    { token: 'keyword', foreground: 'ff79c6' },
+                    { token: 'storage', foreground: 'ff79c6' },
+                    { token: 'storage.type', foreground: '8be9fd', fontStyle: 'italic' },
+                    { token: 'entity.name.function', foreground: '50fa7b' }
+                ],
+                colors: {
+                    'editor.background': '#282a36',
+                    'editor.foreground': '#f8f8f2',
+                    'editor.selectionBackground': '#44475a',
+                    'editor.lineHighlightBackground': '#44475a',
+                    'editorCursor.foreground': '#f8f8f0'
+                }
+            };
+
+            monaco.editor.defineTheme('dracula', draculaTheme);
+            var editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: [
+                    '#include <iostream>',
+                    '',
+                    'int main() {',
+                    '    std::cout << "ElyOS: Mankind is dead. Blood is fuel." << std::endl;',
+                    '    return 0;',
+                    '}'
+                ].join('\n'),
+                language: 'cpp',
+                theme: 'dracula',
+                automaticLayout: true,
+                mouseWheelZoom: true,
+                fontSize: 14,
+                minimap: { enabled: true },
+                cursorBlinking: "smooth",
+                fontFamily: "Fira Code, JetBrains Mono, monospace"
+            });
+
+            const selector = document.getElementById('language-select');
+
+            const languages = monaco.languages.getLanguages();
+
+            languages.sort((a, b) => a.id.localeCompare(b.id));
+
+            languages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.id;
+                option.text = lang.id.toUpperCase();
+                
+                if (lang.id === 'cpp') option.selected = true;
+                
+                selector.appendChild(option);
+            });
+
+            selector.addEventListener('change', function(e) {
+                monaco.editor.setModelLanguage(editor.getModel(), e.target.value);
+            });
+        });
+    </script>
+</body>
+</html>

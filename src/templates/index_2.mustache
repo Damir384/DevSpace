@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html  lang="ru" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/css/pico.min.css">
+    <link rel="stylesheet" href="/static/css/pico.colors.min.css">
+    <style>
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--pico-spacing);
+        }
+    </style>
+    <title>{{ title }}</title>
+</head>
+<body>
+    <nav class="pico-background-slate-950" style="padding: 0 24px;">
+        <ul>
+            <li>
+                <a href="/"><img src="/static/img/favicon.ico" alt="logo" width="64px"></a>
+            </li>
+        </ul>
+        <ul>
+            <li>
+                <details class="dropdown">
+                    <summary>{{ display_name }}</summary>
+                    <ul class="rtl">
+                        <li>
+                            <a href="/logout" class="contrast">logout</a>
+                        </li>
+                    </ul>
+                </details>
+            </li>
+        </ul>
+    </nav>
+    <div class="grid-3">
+    {{#projects}}
+    <article>
+        <header><strong>{{name}}</strong></header>
+    </article>
+    {{/projects}}
+
+    {{^projects}}
+    <article>
+        <header><strong>Проектов пока нет. Создайте первый!</strong></header>
+    </article>
+    {{/projects}}
+    </div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<div id="terminal"></div>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
+
+<script>
+    const term = new Terminal({
+        fontFamily: '"MesloLGS NF", "DejaVu Sans Mono", monospace',
+        cursorBlink: true,
+        allowProposedApi: true
+    });
+    term.open(document.getElementById('terminal'));
+
+    const socket = new WebSocket('ws://' + location.host + '/ws/terminal');
+    
+    // Передача данных из браузера в бэкенд
+    term.onData(data => socket.send(data));
+
+    // Прием данных из бэкенда в браузер
+    socket.onmessage = event => {
+        event.data.arrayBuffer().then(buf => {
+            term.write(new Uint8Array(buf));
+        });
+    };
+</script>
