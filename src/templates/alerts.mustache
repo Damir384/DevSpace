@@ -1,0 +1,44 @@
+<div id="notification-area" 
+     class="w3-container" 
+     style="position: fixed; 
+            bottom: 20px; 
+            left: 20px; 
+            z-index: 9999; 
+            width: 380px; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column-reverse; 
+            gap: 10px;
+            scrollbar-width: none; /* Скрываем скроллбар для чистоты */">
+    
+    {{#alerts}}
+    <div class="w3-card-4 w3-black w3-border w3-border-deep-purple w3-animate-left notification-item" 
+         style="display: flex; align-items: stretch; min-height: 60px; flex-shrink: 0;">
+        
+        <!-- Индикатор категории (Цветная полоса + Иконка) -->
+        <div class="w3-center {{color_class}}" style="width: 50px; display: flex; align-items: center; justify-content: center;">
+            <i class="material-icons">{{icon_name}}</i>
+        </div>
+
+        <!-- Текст сообщения -->
+        <div class="w3-container w3-padding-small" style="flex-grow: 1; display: flex; align-items: center;">
+            <div style="width: 100%;">
+                {{#title}}
+                <div class="w3-small w3-text-deep-purple" style="font-weight: bold; text-transform: uppercase; font-size: 0.7em !important;">
+                    {{title}}
+                </div>
+                {{/title}}
+                <div class="w3-small w3-text-white" style="line-height: 1.2;">{{message}}</div>
+            </div>
+        </div>
+
+        <!-- Кнопка закрытия -->
+        <div class="w3-padding-small">
+            <span onclick="this.parentElement.parentElement.remove()" 
+                  class="w3-button w3-transparent w3-hover-text-deep-purple w3-tiny" 
+                  style="padding: 0 4px;">&times;</span>
+        </div>
+    </div>
+    {{/alerts}}
+</div>
