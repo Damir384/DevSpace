@@ -42,7 +42,7 @@ int App::run(std::string title) {
             std::vector<crow::json::wvalue> proj_list;
 
             for (const auto& name : projects) {
-                proj_list.push_back(crow::json::wvalue({{"name", name}}));
+                proj_list.push_back(crow::json::wvalue({{"project_name", name}}));
             }
             ctx["projects"] = std::move(proj_list);
 
