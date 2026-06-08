@@ -297,6 +297,7 @@ int App::run(std::string title) {
             explorer_ctx = std::move(root);
             explorer_ctx["base_path"] = "/project/"+project_name+"/";
             explorer_ctx["path"] = "/project/"+project_name+sub_path;
+            explorer_ctx["title"] = project_name;
             ctx["title"] = project_name;
             ctx["main_content"] = crow::mustache::load("explorer.mustache").render(explorer_ctx).body_;
         }
