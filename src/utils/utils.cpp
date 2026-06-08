@@ -4,6 +4,32 @@
 #include <filesystem>
 #include <regex>
 #include <unistd.h>
+#include <ctime>
+
+std::string url_decode(const std::string &str)
+{
+    std::string res;
+    res.reserve(str.size());
+    for (size_t i = 0; i < str.size(); ++i) {
+        if (str[i] == '%' && i + 2 < str.size()) {
+            try {
+                // Превращаем "20" или "D0" в числовое значение символа
+                int hex = std::stoi(str.substr(i + 1, 2), nullptr, 16);
+                res += static_cast<char>(hex);
+                i += 2;
+            } catch (...) {
+                // Если % есть, но после него не HEX — оставляем как есть
+                res += str[i];
+            }
+        } else if (str[i] == '+') {
+            res += ' ';
+        } else {
+            res += str[i];
+        }
+    }
+    return res;
+}
+
 
 double SystemMonitor::get_cpu_temp() {
     std::ifstream temp_file("/sys/class/thermal/thermal_zone0/temp");
@@ -32,6 +58,46 @@ SystemMonitor::RamStats SystemMonitor::get_ram_info() {
 
 namespace fs = std::filesystem;
 
+std::string get_permissions(const fs::path& path) {
+    fs::perms p = fs::status(path).permissions();
+    auto test = [&](fs::perms bit){ return (p & bit) != fs::perms::none ? 'x' : '-'; };
+    // для читаемости сделаем отдельно для r, w, x
+    auto rtest = [&](fs::perms bit){ return (p & bit) != fs::perms::none ? 'r' : '-'; };
+    auto wtest = [&](fs::perms bit){ return (p & bit) != fs::perms::none ? 'w' : '-'; };
+
+    std::string s;
+    s += rtest(fs::perms::owner_read);
+    s += wtest(fs::perms::owner_write);
+    s += test (fs::perms::owner_exec);
+
+    s += rtest(fs::perms::group_read);
+    s += wtest(fs::perms::group_write);
+    s += test (fs::perms::group_exec);
+
+    s += rtest(fs::perms::others_read);
+    s += wtest(fs::perms::others_write);
+    s += test (fs::perms::others_exec);
+
+    return s;
+}
+
+std::string last_modification_time(const fs::path& p) {
+    try {
+        auto ftime = fs::last_write_time(p);
+        auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+            ftime - fs::file_time_type::clock::now()
+            + std::chrono::system_clock::now()
+        );
+        std::time_t t = std::chrono::system_clock::to_time_t(sctp);
+        std::tm tm = *std::localtime(&t);
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%F %T");
+        return oss.str();
+    } catch (const fs::filesystem_error&) {
+        return {};
+    }
+}
+
 // bool projects_directory_exist(std::string& path){
 //     if (fs::exists(path)) {
 //         if (fs::is_directory(path)) {
@@ -58,6 +124,62 @@ std::vector<std::string> ProjectManager::get_user_projects(const std::string& ba
     } catch (...) {
     }
     return projects;
+}
+
+bool ProjectManager::exists(const std::string& path, const std::string& project_name) {
+    if (project_name.empty()) return false;
+    
+    fs::path p = path;
+    p /= project_name;
+
+    // Проверяем, существует ли путь и является ли он директорией
+    return fs::exists(p) && fs::is_directory(p);
+}
+
+crow::json::wvalue ProjectManager::list_project_dir(const std::string& base_path, const std::string& project_dir) {
+    fs::path base = fs::weakly_canonical(base_path);
+    fs::path target = fs::weakly_canonical(base_path+project_dir);
+
+    // Security Check: проверяем, что target все еще находится внутри base
+    auto [base_it, target_it] = std::mismatch(
+        base.begin(), base.end(), 
+        target.begin(), target.end()
+    );
+    
+    // Если итератор базы не дошел до конца — значит, префикс не совпал (попытка побега)
+    if (base_it != base.end()) {
+        target = base;
+    }
+
+    crow::json::wvalue::list file_list;
+
+    try {
+        if (fs::exists(target) && fs::is_directory(target)) {
+            for (const auto& entry : fs::directory_iterator(target)) {
+                crow::json::wvalue item;
+                item["entry"] = entry.path().filename().string();
+                item["is_directory"] = entry.is_directory();
+                item["create_date"] = last_modification_time(entry);
+                item["permissions"] = get_permissions(entry);
+                
+                if (entry.is_regular_file()) {
+                    item["size"] = entry.file_size();
+                }
+                
+                file_list.push_back(std::move(item));
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        // Если что-то пошло не так (права доступа и т.д.), возвращаем пустой список или ошибку
+    }
+
+    crow::json::wvalue root;
+
+    auto si = fs::space(target);
+
+    root["files"] = std::move(file_list);
+    root["free_space"] = si.free;
+    return root;
 }
 
 ProjectStatus ProjectManager::create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid) {
@@ -93,5 +215,3 @@ ProjectStatus ProjectManager::create_project(const std::string& base_path, const
 
     return ProjectStatus::UnknownError;
 }
-
-

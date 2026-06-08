@@ -1,4 +1,5 @@
 #pragma once
+#include "crow.h"
 #include <vector>
 #include <string>
 
@@ -11,6 +12,8 @@ enum class ProjectStatus {
     FileSystemError,
     UnknownError
 };
+
+std::string url_decode(const std::string &str);
 
 class SystemMonitor {
 public:
@@ -29,5 +32,7 @@ public:
     //TODO сделать функцию проверки существования директории хранения проектов
     ProjectStatus create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid);
     static std::vector<std::string> get_user_projects(const std::string& base_path);
+    static crow::json::wvalue list_project_dir(const std::string& base_path, const std::string& project_dir);
+    static bool exists(const std::string& path, const std::string& project_name);
 };
 
