@@ -120,12 +120,12 @@ int App::run(std::string title) {
             return res;
         }
 
-        crow::json::wvalue::list error_alerts;
-        error_alerts.push_back(crow::json::wvalue({
+        crow::json::wvalue::list alerts;
+        alerts.push_back(crow::json::wvalue({
             {"message", "Доступ запрещен: неверные учетные данные"},
             {"icon_name", "lock_reset"}, {"color_class", "w3-red"}
         }));
-        session.set("alerts", crow::json::wvalue(std::move(error_alerts)).dump());
+        session.set("alerts", crow::json::wvalue(std::move(alerts)).dump());
         
         crow::response res;
         res.code = 302;
