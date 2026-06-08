@@ -140,6 +140,239 @@ int App::run(std::string title) {
         return res;
     });
 
+    CROW_ROUTE(app, "/add_project/").methods("POST"_method)
+    ([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+
+        if (!base_context(ctx, session)) {
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        auto params = crow::query_string("?" + req.body);
+        std::string project_name = params.get("project_name") ? params.get("project_name") : "";
+
+        if (project_name.empty()) {
+            crow::json::wvalue::list err_alerts;
+            err_alerts.push_back(crow::json::wvalue({
+                {"message", "Ошибка: имя проекта не может быть пустым"},
+                {"icon_name", "error"}, {"color_class", "w3-red"}
+            }));
+            session.set("alerts", crow::json::wvalue(std::move(err_alerts)).dump());
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        uid_t uid = (uid_t)std::stoul(session.get("uid", "32768"));
+        gid_t gid = (gid_t)std::stoul(session.get("gid", "32768"));
+        std::string user_home = "/var/lib/devspace/projects/" + session.get("username", "");
+
+        ProjectManager pm;
+        ProjectStatus status = pm.create_project(user_home, project_name, uid, gid);
+
+        crow::json::wvalue::list alerts;
+        if (status == ProjectStatus::Success) {
+            alerts.push_back(crow::json::wvalue({
+                {"message", "Проект '" + project_name + "' успешно создан."},
+                {"icon_name", "done"}, {"color_class", "w3-deep-purple"}
+            }));
+        } else {
+            alerts.push_back(crow::json::wvalue({
+                {"message", "Не удалось создать проект. " + pstatus_to_string(status)},
+                {"icon_name", "warning"}, {"color_class", "w3-red"}
+            }));
+        }
+
+        session.set("alerts", crow::json::wvalue(std::move(alerts)).dump());
+
+        crow::response res;
+        res.code = 302;
+        res.set_header("Location", "/");
+        return res;
+    });
+
+    CROW_ROUTE(app, "/project/")
+    .methods("GET"_method)([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+        crow::response res;
+        res.code = 302;
+        res.set_header("Location", "/");
+        return res;
+    });
+
+    CROW_ROUTE(app, "/project/<string>")
+    .methods("GET"_method)([&app](const crow::request& req, std::string project_name) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+        crow::response res;
+
+        if (!base_context(ctx, session)) {
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        res.code = 302;
+        res.set_header("Location", "/project/"+project_name+"/");
+        return res;
+    });
+
+    CROW_ROUTE(app, "/project/<string><path>")
+    .methods("GET"_method)([&app](const crow::request& req, std::string project_name, std::string sub_path) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+        crow::mustache::context explorer_ctx;
+
+        if (!base_context(ctx, session)) {
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        if (!ProjectManager::exists("/var/lib/devspace/projects/"+session.get("username", ""), project_name)){
+            crow::json::wvalue::list alerts;
+            alerts.push_back(crow::json::wvalue({
+                {"message", "Проекта "+project_name+" несуществует"},
+                {"icon_name", "warning"}, {"color_class", "w3-red"}
+            }));
+            session.set("alerts", crow::json::wvalue(std::move(alerts)).dump());
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        sub_path = url_decode(sub_path);
+
+        crow::json::wvalue root = ProjectManager::list_project_dir("/var/lib/devspace/projects/"+session.get("username", "")+"/"+project_name, sub_path);
+        
+        explorer_ctx = std::move(root);
+        explorer_ctx["base_path"] = "/project/"+project_name+"/";
+        explorer_ctx["path"] = "/project/"+project_name+sub_path;
+        ctx["title"] = project_name;
+        ctx["main_content"] = crow::mustache::load("explorer.mustache").render(explorer_ctx).body_;
+
+        return crow::response(crow::mustache::load("index.mustache").render(ctx));
+    });
+
+    std::map<crow::websocket::connection*, int> pty_masters;
+
+    CROW_WEBSOCKET_ROUTE(app, "/terminal/ws")
+    .onaccept([&](const crow::request& req, void** userdata) {
+        auto& session = app.get_context<Session>(req);
+        std::string user = session.get("username", "");
+        
+        if (user.empty()) return false;
+
+        auto* ctx = new UserPtyContext();
+        ctx->uid = (uid_t)std::stoul(session.get("uid", "32768"));
+        ctx->gid = (gid_t)std::stoul(session.get("gid", "32768"));
+        ctx->home = session.get("home", "/tmp");
+        ctx->username = user;
+        ctx->shell = session.get("shell", "/bin/bash");
+        
+        *userdata = ctx; 
+        return true;
+    })
+    .onopen([&](crow::websocket::connection& conn) {
+        auto* ctx = static_cast<UserPtyContext*>(conn.userdata());
+        if (!ctx) { conn.close("Internal Error"); return; }
+
+        int master;
+        pid_t pid = forkpty(&master, NULL, NULL, NULL);
+
+        if (pid == 0) {
+            if (initgroups(ctx->username.c_str(), ctx->gid) != 0) exit(1);
+            if (setgid(ctx->gid) != 0) exit(1);
+            if (setuid(ctx->uid) != 0) exit(1);
+
+            chdir(ctx->home.c_str());
+            setenv("HOME", ctx->home.c_str(), 1);
+            setenv("TERM", "xterm-256color", 1);
+            setenv("USER", ctx->username.c_str(), 1);
+
+            execl(ctx->shell.c_str(), ctx->shell.c_str(), "-l", NULL);
+            exit(0);
+        }
+
+        pty_masters[&conn] = master;
+
+        std::string banner = 
+            "\r\n\x1b[1;35m"
+            "----------------------------------------------------------\r\n"
+            "  Welcome to DevSpace Terminal [ALPHA]\r\n"
+            "  Architect: DevDrafts\r\n"
+            "  GitHub:    https://github.com/ARDamir384/DevSpace\r\n"
+            "  Warning:   DON'T TYPE COMMAND \"YES\"\r\n"
+            "----------------------------------------------------------\r\n"
+            "\x1b[0m\r\n";
+
+        // Отправляем баннер клиенту
+        conn.send_binary(banner);
+
+        std::thread([&conn, master]() {
+            char buffer[1024];
+            while (true) {
+                ssize_t n = read(master, buffer, sizeof(buffer));
+                if (n <= 0) break;
+                conn.send_binary(std::string(buffer, n));
+            }
+        }).detach();
+    })
+    .onmessage([&](crow::websocket::connection& conn, const std::string& data, bool is_binary) {
+        auto it = pty_masters.find(&conn);
+        if (it != pty_masters.end()) {
+            int master_fd = it->second;
+
+            if (!is_binary && data.find("resize") != std::string::npos) {
+                auto j = crow::json::load(data);
+                if (j && j.has("cols") && j.has("rows")) {
+                    struct winsize ws;
+                    ws.ws_col = (unsigned short)j["cols"].u();
+                    ws.ws_row = (unsigned short)j["rows"].u();
+                    ioctl(master_fd, TIOCSWINSZ, &ws);
+                }
+                return; 
+            }
+            ssize_t written = write(master_fd, data.c_str(), data.size());
+            
+            if (written == -1) {
+                CROW_LOG_ERROR << "Failed to write to PTY master: " << errno;
+            }
+        }
+    })
+    .onclose([&](crow::websocket::connection& conn, const std::string& reason, uint16_t code) {
+        if (pty_masters.count(&conn)) {
+            close(pty_masters[&conn]);
+            pty_masters.erase(&conn);
+        }
+        auto* ctx = static_cast<UserPtyContext*>(conn.userdata());
+        if (ctx) delete ctx;
+    });
+
+    CROW_ROUTE(app, "/terminal/")
+    .methods("GET"_method)([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+
+        if (!base_context(ctx, session)) {
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+        ctx["main_content"] = crow::mustache::load("terminal.mustache").render().body_;
+        
+        return crow::response(crow::mustache::load("index.mustache").render(ctx));
+    });
+
     app.port(80).multithreaded().run();
     return 0;
 }

@@ -1,24 +1,116 @@
-<div id="terminal"></div>
-<script src="https://cdn.jsdelivr.net/npm/xterm@5.1.0/lib/xterm.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.1.0/css/xterm.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<style>
+    html, body {
+    height: 100%;
+    margin: 0;
+    }
+
+    .w3-col {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    }
+
+    .w3-card-4 {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    }
+
+    .card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    }
+
+    #terminal {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+    }
+</style>
+
+<div class="w3-col w3-padding" style="height: 100%;">
+    <div class="w3-card-4 w3-border w3-border-deep-purple" style="height: 100%;">
+        <header class="w3-container w3-border-bottom w3-border-deep-purple">
+        <h3>Terminal</h3>
+        </header>
+
+        <div class="w3-container card-content">
+            <div id="terminal" style="padding: 10px;"></div>
+        </div>
+    </div>
+</div>
 
 <script>
+    // 1. Инициализация терминала
     const term = new Terminal({
-        fontFamily: '"MesloLGS NF", "DejaVu Sans Mono", monospace',
         cursorBlink: true,
-        allowProposedApi: true
+        theme: {
+            background: '#000000',
+            foreground: '#ffffff',
+            cursor: '#673ab7',
+            selectionBackground: '#673ab7'
+        },
+        fontFamily: 'monospace',
+        fontSize: 14
     });
-    term.open(document.getElementById('terminal'));
 
-    const socket = new WebSocket('ws://' + location.host + '/ws/terminal');
+    // 2. Подключение FitAddon
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
     
-    // Передача данных из браузера в бэкенд
-    term.onData(data => socket.send(data));
+    const terminalContainer = document.getElementById('terminal');
+    term.open(terminalContainer);
 
-    // Прием данных из бэкенда в браузер
-    socket.onmessage = event => {
-        event.data.arrayBuffer().then(buf => {
-            term.write(new Uint8Array(buf));
-        });
+    // Функция синхронизации размера
+    function syncSize() {
+        fitAddon.fit(); // Рассчитывает cols/rows исходя из размеров div#terminal
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: "resize",
+                cols: term.cols,
+                rows: term.rows-1
+            }));
+        }
+    }
+
+    // 3. Работа с WebSocket
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const socket = new WebSocket(protocol + window.location.host + '/terminal/ws');
+
+    socket.onopen = () => {
+        console.log("ElyOS PTY: Stream Connected");
+        syncSize(); // Первичная подгонка при подключении
     };
+
+    socket.onmessage = (event) => {
+        if (event.data instanceof Blob) {
+            event.data.arrayBuffer().then(buf => term.write(new Uint8Array(buf)));
+        } else {
+            term.write(event.data);
+        }
+    };
+
+    // 4. Передача ввода
+    term.onData(data => {
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(data);
+        }
+    });
+
+    // 5. Обработка изменения окна
+    window.addEventListener('resize', () => {
+        syncSize();
+    });
+
+    // Авто-фокус
+    terminalContainer.addEventListener('click', () => term.focus());
+    
+    // Запуск первичного фита
+    setTimeout(syncSize, 100); 
 </script>
