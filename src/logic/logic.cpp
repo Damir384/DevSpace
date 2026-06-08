@@ -38,23 +38,24 @@ int App::run(std::string title) {
     .methods("GET"_method)([&app](const crow::request& req) {
         auto& session = app.get_context<Session>(req);
         crow::mustache::context ctx;
+        crow::mustache::context dash_ctx;
 
-        if (base_context(ctx, session)) {
-            ctx["title"] = "Dashboard";
-            std::string user_home = "/var/lib/devspace/projects/" + session.get("username", ""); //TODO сделать получение директории хранения проектов из файла конфигурации
-            std::vector<std::string> projects = ProjectManager::get_user_projects(user_home);
-            std::vector<crow::json::wvalue> proj_list;
-
-            for (const auto& name : projects) {
-                proj_list.push_back(crow::json::wvalue({{"project_name", name}}));
-            }
-            ctx["projects"] = std::move(proj_list);
-
-            return crow::response(crow::mustache::load("index.mustache").render(ctx));
-        } else {
+        if (!base_context(ctx, session)) {
             ctx["title"] = "Login";
             return crow::response(crow::mustache::load("login.mustache").render(ctx));
         }
+        ctx["title"] = "dashboard";
+        std::string user_home = "/var/lib/devspace/projects/" + session.get("username", ""); //TODO сделать получение директории хранения проектов из файла конфигурации
+        std::vector<std::string> projects = ProjectManager::get_user_projects(user_home);
+        std::vector<crow::json::wvalue> proj_list;
+
+        for (const auto& name : projects) {
+            proj_list.push_back(crow::json::wvalue({{"project_name", name}}));
+        }
+        dash_ctx["projects"] = std::move(proj_list);
+        ctx["main_content"] = crow::mustache::load("dashboard.mustache").render(dash_ctx).body_;
+
+        return crow::response(crow::mustache::load("index.mustache").render(ctx));
     });
 
     CROW_ROUTE(app, "/login/").methods("POST"_method)

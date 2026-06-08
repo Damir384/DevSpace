@@ -4,56 +4,6 @@
     {{> header.mustache }}
     {{> sidebar.mustache}}
     <div class="main-content">
-        <div class="w3-container">
-            <div class="w3-row">
-                <button onclick="document.getElementById('projModal').style.display='block'"
-                        class="w3-border w3-border-deep-purple w3-button w3-black position-fixed end-bottom"><i class="material-icons">add</i></button>
-
-                <div id="projModal" class="w3-modal">
-                <div class="w3-modal-content" style="max-width:600px;">
-                    <form action="/add_project/" method="post">
-                    <div class="w3-card-4 w3-black w3-border w3-border-deep-purple">
-                        <header class="w3-container w3-border-bottom w3-border-deep-purple">
-                        <span class="w3-button w3-display-topright" onclick="document.getElementById('projModal').style.display='none'">&times;</span>
-                        <h3 class="w3-margin-0">Новый проект</h3>
-                        </header>
-
-                        <div class="w3-container w3-padding">
-                        <label class="w3-text-white">Название проекта</label>
-                        <input type="text" name="project_name" id="project_name" class="w3-input w3-black w3-border w3-border-deep-purple" placeholder="Введите название" required autofocus>
-
-                        <label class="w3-text-white w3-margin-top">Описание проекта</label>
-                        <textarea name="project_desc" id="project_desc" class="w3-input w3-black w3-border w3-border-deep-purple" style="min-height:120px; resize: none;" placeholder="Краткое описание"></textarea>
-                        </div>
-
-                        <footer class="w3-container w3-border-top w3-border-deep-purple">
-                        <div class="w3-right w3-padding">
-                            <button type="button" class="w3-button w3-border w3-border-deep-purple" onclick="document.getElementById('projModal').style.display='none'">Отмена</button>
-                            <button type="submit" class="w3-button w3-deep-purple">Добавить</button>
-                        </div>
-                        </footer>
-                    </div>
-                    </form>
-                </div>
-                </div>
-                {{#projects}}
-                <div class="w3-col s4 w3-padding">
-                    <div class="w3-card-4 w3-border w3-border-deep-purple">
-                        <header class="w3-container w3-border-bottom w3-border-deep-purple">
-                        <h3>{{ project_name }}</h3>
-                        </header>
-
-                        <div class="w3-container card-content">
-                        <p>Описание проекта</p>
-                        </div>
-
-                        <footer class="w3-container w3-border-top w3-border-deep-purple">
-                        <h5>Кнопки взаимодействия</h5>
-                        </footer>
-                    </div>
-                </div>
-                {{/projects}}
-            </div>
-        </div>
+        {{{main_content}}}
     </div>
 </body>
