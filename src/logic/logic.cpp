@@ -304,6 +304,47 @@ int App::run(std::string title) {
         return crow::response(crow::mustache::load("index.mustache").render(ctx));
     });
 
+    CROW_ROUTE(app, "/project/<string>/create/<path>")
+    .methods("POST"_method)([&app](const crow::request& req, std::string project_name, std::string sub_path) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+
+        if (!base_context(ctx, session)) {
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        auto json_data = crow::json::load(req.body);
+        std::string type = "file";
+        if (json_data && json_data.has("type")) {
+            type = json_data["type"].s();
+        }
+        
+        sub_path = url_decode(sub_path);
+        std::string base_project_path = "/var/lib/devspace/projects/" + session.get("username", "") + "/" + project_name;
+
+        std::string error_msg;
+        bool success = ProjectManager::create_object(base_project_path, sub_path, (type == "dir"), error_msg);
+
+        crow::json::wvalue::list alerts; // ТВОИ АЛЕРТЫ
+        if (success) {
+            alerts.push_back(crow::json::wvalue({
+                {"message", (type == "dir" ? "Папка " : "Файл ") + sub_path + " создан успешно"},
+                {"icon_name", "add_task"}, {"color_class", "w3-green"}
+            }));
+        } else {
+            alerts.push_back(crow::json::wvalue({
+                {"message", "Ошибка создания: " + error_msg},
+                {"icon_name", "error"}, {"color_class", "w3-red"}
+            }));
+        }
+        
+        session.set("alerts", crow::json::wvalue(std::move(alerts)).dump());
+        return crow::response(200, "{\"status\":\"ok\"}");
+    });
+
     CROW_ROUTE(app, "/project/<string>/save/<path>")
     .methods("POST"_method)([&app](const crow::request& req, std::string project_name, std::string sub_path) {
         auto& session = app.get_context<Session>(req);

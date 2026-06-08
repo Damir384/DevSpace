@@ -289,6 +289,39 @@ bool ProjectManager::save_file_content(const std::string& base_path, const std::
     }
 }
 
+bool ProjectManager::create_object(const std::string& base_path, const std::string& sub_path, bool is_dir, std::string& error_msg) {
+    try {
+        fs::path base = fs::weakly_canonical(base_path);
+        fs::path target = fs::weakly_canonical(base.string() + (sub_path[0] == '/' ? "" : "/") + sub_path);
+
+        // Security Check
+        auto [base_it, target_it] = std::mismatch(base.begin(), base.end(), target.begin(), target.end());
+        if (base_it != base.end()) {
+            error_msg = "Access denied: Path traversal.";
+            return false;
+        }
+
+        if (fs::exists(target)) {
+            error_msg = "Объект уже существует!";
+            return false;
+        }
+
+        if (is_dir) {
+            return fs::create_directories(target);
+        } else {
+            // Создаем родительские папки, если их нет
+            fs::create_directories(target.parent_path());
+            // "Touch" файла
+            std::ofstream ofs(target);
+            ofs.close();
+            return true;
+        }
+    } catch (const std::exception& e) {
+        error_msg = e.what();
+        return false;
+    }
+}
+
 ProjectStatus ProjectManager::create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid) {
     if (proj_name.empty() || proj_name.length() > 255) return ProjectStatus::NameTooLong;
     

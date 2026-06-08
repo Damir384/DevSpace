@@ -90,5 +90,40 @@
         <button onclick="location.reload()" class="w3-button w3-border w3-border-deep-purple w3-black w3-hover-deep-purple">
             <i class="material-icons w3-small">refresh</i> Обновить
         </button>
+        <button onclick="spawnEntity('file')" class="w3-button w3-border w3-border-deep-purple w3-black w3-hover-deep-purple">
+            <i class="material-icons w3-small">add_circle</i> Создать файл
+        </button>
+        <button onclick="spawnEntity('dir')" class="w3-button w3-border w3-border-deep-purple w3-black w3-hover-deep-purple">
+            <i class="material-icons w3-small">create_new_folder</i> Создать каталог
+        </button>
     </div>
+
+    <script>
+    function spawnEntity(type) {
+        const entityName = prompt("Введите имя " + (type === 'file' ? "файла" : "папки") + ":");
+        if (!entityName || entityName.trim() === "") return;
+
+        const projectName = "{{title}}";
+        let currentPath = window.location.pathname.substring(window.location.pathname.indexOf(projectName) + projectName.length);
+        if (!currentPath.endsWith("/")) currentPath += "/";
+
+        const saveUrl = "/project/" + projectName + "/create" + currentPath + entityName;
+
+        fetch(saveUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: type })
+        })
+        .then(response => {
+            // Мы просто перезагружаем страницу в любом случае. 
+            // Если успех — бэкенд уже положил "зеленый" алерт в сессию.
+            // Если ошибка — бэкенд положил "красный" алерт.
+            window.location.reload();
+        })
+        .catch(error => {
+            console.error("Fetch error:", error);
+            alert("Ошибка сети: не удалось связаться с ядром ElyOS");
+        });
+    }
+    </script>
 </div>

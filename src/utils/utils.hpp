@@ -37,5 +37,6 @@ public:
     static bool it_regular_file(const std::string& path);
     static crow::json::wvalue get_file_content(const std::string& base_path, const std::string& file_path, std::string& status);
     static bool save_file_content(const std::string& base_path, const std::string& file_path, const std::string& content, std::string& error_msg);
+    static bool create_object(const std::string& base_path, const std::string& sub_path, bool is_dir, std::string& error_msg);
 };
 
