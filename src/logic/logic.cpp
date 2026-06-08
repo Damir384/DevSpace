@@ -133,6 +133,30 @@ int App::run(std::string title) {
         return res;
     });
 
+    CROW_ROUTE(app, "/logout/")
+    ([&app](const crow::request& req) {
+        auto& session = app.get_context<Session>(req);
+        
+        std::vector<std::string> keys = session.keys();
+        
+        for (const auto& key : keys) {
+            session.remove(key);
+        }
+
+        // Опционально: добавляем прощальный алерт
+        crow::json::wvalue::list alerts;
+        alerts.push_back(crow::json::wvalue({
+            {"message", "Сессия завершена."},
+            {"icon_name", "power_settings_new"}, {"color_class", "w3-blue-grey"}
+        }));
+        session.set("alerts", crow::json::wvalue(std::move(alerts)).dump());
+
+        crow::response res;
+        res.code = 302;
+        res.set_header("Location", "/");
+        return res;
+    });
+
     CROW_ROUTE(app, "/favicon.ico")
     ([]{
         crow::response res;
