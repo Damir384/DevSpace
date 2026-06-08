@@ -34,5 +34,8 @@ public:
     static std::vector<std::string> get_user_projects(const std::string& base_path);
     static crow::json::wvalue list_project_dir(const std::string& base_path, const std::string& project_dir);
     static bool exists(const std::string& path, const std::string& project_name);
+    static bool it_regular_file(const std::string& path);
+    static crow::json::wvalue get_file_content(const std::string& base_path, const std::string& file_path, std::string& status);
+    static bool save_file_content(const std::string& base_path, const std::string& file_path, const std::string& content, std::string& error_msg);
 };
 

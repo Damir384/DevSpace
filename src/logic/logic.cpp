@@ -250,16 +250,70 @@ int App::run(std::string title) {
         }
 
         sub_path = url_decode(sub_path);
+        std::string full_path = "/var/lib/devspace/projects/" + session.get("username", "") + "/" + project_name + sub_path;
 
-        crow::json::wvalue root = ProjectManager::list_project_dir("/var/lib/devspace/projects/"+session.get("username", "")+"/"+project_name, sub_path);
-        
-        explorer_ctx = std::move(root);
-        explorer_ctx["base_path"] = "/project/"+project_name+"/";
-        explorer_ctx["path"] = "/project/"+project_name+sub_path;
-        ctx["title"] = project_name;
-        ctx["main_content"] = crow::mustache::load("explorer.mustache").render(explorer_ctx).body_;
+        if (ProjectManager::it_regular_file(full_path)) {
+            // РЕЖИМ РЕДАКТОРА
+            std::string status;
+            crow::json::wvalue file_data = ProjectManager::get_file_content("/var/lib/devspace/projects/" + session.get("username", "") + "/" + project_name, sub_path, status);
+            
+            if (status == "success") {
+                crow::mustache::context editor_ctx;
+                editor_ctx["save_url"] = "/project/" + project_name + "/save" + sub_path;
+                editor_ctx["file_json_raw"] = file_data.dump();
+                
+                ctx["title"] = "Monaco";
+                ctx["main_content"] = crow::mustache::load("editor.mustache").render(editor_ctx).body_;
+            } else {
+                // Если статус не success, выводим ошибку (можно через алерты сессии)
+                return crow::response(403, "File error: " + status);
+            }
+        } else {
+            crow::json::wvalue root = ProjectManager::list_project_dir("/var/lib/devspace/projects/"+session.get("username", "")+"/"+project_name, sub_path);
+            
+            explorer_ctx = std::move(root);
+            explorer_ctx["base_path"] = "/project/"+project_name+"/";
+            explorer_ctx["path"] = "/project/"+project_name+sub_path;
+            ctx["title"] = project_name;
+            ctx["main_content"] = crow::mustache::load("explorer.mustache").render(explorer_ctx).body_;
+        }
 
         return crow::response(crow::mustache::load("index.mustache").render(ctx));
+    });
+
+    CROW_ROUTE(app, "/project/<string>/save/<path>")
+    .methods("POST"_method)([&app](const crow::request& req, std::string project_name, std::string sub_path) {
+        auto& session = app.get_context<Session>(req);
+        crow::mustache::context ctx;
+        
+        if (!base_context(ctx, session)) {
+            crow::response res;
+            res.code = 302;
+            res.set_header("Location", "/");
+            return res;
+        }
+
+        auto json_data = crow::json::load(req.body);
+        if (!json_data || !json_data.has("content")) {
+            return crow::response(400, "Bad Request: Missing 'content' field");
+        }
+
+        std::string new_content = json_data["content"].s();
+        sub_path = url_decode(sub_path);
+        std::string base_project_path = "/var/lib/devspace/projects/" + session.get("username", "") + "/" + project_name;
+        sub_path = "/var/lib/devspace/projects/" + session.get("username", "") + "/" + project_name + "/" + sub_path;
+
+        std::string error_msg;
+        bool success = ProjectManager::save_file_content(base_project_path, sub_path, new_content, error_msg);
+
+        if (success) {
+            crow::json::wvalue res;
+            res["status"] = "ok";
+            res["message"] = "File saved successfully";
+            return crow::response(std::move(res));
+        } else {
+            return crow::response(500, "Internal Server Error: " + error_msg);
+        }
     });
 
     std::map<crow::websocket::connection*, int> pty_masters;

@@ -136,6 +136,14 @@ bool ProjectManager::exists(const std::string& path, const std::string& project_
     return fs::exists(p) && fs::is_directory(p);
 }
 
+bool ProjectManager::it_regular_file(const std::string &path)
+{
+    if(fs::is_regular_file(path)) {
+        return true;
+    }
+    return false;
+}
+
 crow::json::wvalue ProjectManager::list_project_dir(const std::string& base_path, const std::string& project_dir) {
     fs::path base = fs::weakly_canonical(base_path);
     fs::path target = fs::weakly_canonical(base_path+project_dir);
@@ -180,6 +188,105 @@ crow::json::wvalue ProjectManager::list_project_dir(const std::string& base_path
     root["files"] = std::move(file_list);
     root["free_space"] = si.free;
     return root;
+}
+
+crow::json::wvalue ProjectManager::get_file_content(const std::string& base_path, const std::string& file_path, std::string& status) {
+    fs::path base = fs::weakly_canonical(base_path);
+    fs::path target = fs::weakly_canonical(base_path + file_path);
+
+    crow::json::wvalue result;
+    status = "error"; // По умолчанию всё плохо
+
+    auto [base_it, target_it] = std::mismatch(base.begin(), base.end(), target.begin(), target.end());
+    if (base_it != base.end()) {
+        result["message"] = "Access denied";
+        return result;
+    }
+
+    try {
+        if (fs::exists(target) && fs::is_regular_file(target)) {
+            std::ifstream ifs(target, std::ios::in | std::ios::binary);
+            if (!ifs.is_open()) {
+                result["message"] = "Could not open file";
+                return result;
+            }
+
+            std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            
+            result["content"] = std::move(content);
+            result["filename"] = target.filename().string();
+            // Безопасное извлечение расширения
+            std::string ext = target.extension().string();
+            result["extension"] = (ext.length() > 1) ? ext.substr(1) : "txt";
+            
+            status = "success"; // Вот теперь успех
+        } else {
+            result["message"] = "Not a regular file";
+        }
+    } catch (const std::exception& e) {
+        result["message"] = e.what();
+    }
+
+    return result;
+}
+
+bool ProjectManager::save_file_content(const std::string& base_path, const std::string& file_path, const std::string& content, std::string& error_msg) {
+    fs::path base = fs::weakly_canonical(base_path);
+    fs::path target = fs::weakly_canonical(file_path);
+
+    // Проверка: а не пытаемся ли мы записать в папку?
+    if (fs::exists(target) && fs::is_directory(target)) {
+        error_msg = "Is a directory, not a file: " + target.string();
+        return false;
+    }
+
+    // Security Check: Барьер против доходяг
+    auto [base_it, target_it] = std::mismatch(base.begin(), base.end(), target.begin(), target.end());
+    if (base_it != base.end()) {
+        error_msg = "Access denied: Path traversal attempted.";
+        return false;
+    }
+
+    try {
+        if (fs::exists(target) && fs::is_directory(target)) {
+            error_msg = "Cannot save: target is a directory.";
+            return false;
+        }
+
+        if (!fs::exists(target.parent_path())) {
+            fs::create_directories(target.parent_path());
+        }
+
+        // Открываем поток на запись. ios::binary — чтобы не было сюрпризов с \r\n
+        std::ofstream ofs(target, std::ios::out | std::ios::binary | std::ios::trunc);
+        if (!ofs.is_open()) {
+            // ДОПОЛНЕНИЕ 2: Глубокая диагностика через системный errno
+            int err = errno;
+            error_msg = "Failed to open file. System Reason: " + std::string(std::strerror(err)) + 
+                        " (errno: " + std::to_string(err) + "). Target: " + target.string();
+            
+            // Если root получает EACCES (13), проверяем immutable флаг
+            if (err == 13) error_msg += " | Hint: Check if file is immutable (lsattr).";
+            // Если ENOENT (2), значит путь к файлу все еще невалиден
+            if (err == 2) error_msg += " | Hint: Parent directory still not found.";
+            
+            return false;
+        }
+
+        ofs.write(content.c_str(), content.size());
+        ofs.flush(); 
+        ofs.close();
+
+        if (ofs.fail()) {
+            error_msg = "Stream failure during write.";
+            return false;
+        }
+
+        return true;
+    } catch (const std::exception& e) {
+        error_msg = std::string("Filesystem error: ") + e.what();
+        return false;
+    }
 }
 
 ProjectStatus ProjectManager::create_project(const std::string& base_path, const std::string& proj_name, uid_t uid, gid_t gid) {
