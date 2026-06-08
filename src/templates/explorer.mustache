@@ -1,0 +1,94 @@
+<div class="w3-container w3-animate-opacity">
+    <!-- Панель управления и информации -->
+    <div class="w3-row w3-margin-top w3-margin-bottom">
+        <div class="w3-col m8 w3-text-white">
+            <span class="w3-tag w3-black w3-border w3-border-deep-purple">
+                <i class="material-icons" style="vertical-align: middle;">folder</i> 
+                {{path}}
+            </span>
+        </div>
+        <div class="w3-col m4 w3-right-align">
+            <span class="w3-tag w3-black w3-border w3-border-deep-purple">
+                <i class="material-icons" style="vertical-align: middle;">storage</i> 
+                Free: {{free_space}} bytes
+            </span>
+        </div>
+    </div>
+
+    <!-- Таблица проводника -->
+    <div class="w3-card-4 w3-black w3-border w3-border-deep-purple">
+        <table class="w3-table w3-small">
+            <thead>
+                <tr class="w3-deep-purple">
+                    <th style="width: 40px;"></th>
+                    <th>Имя объекта</th>
+                    <th>Размер</th>
+                    <th>Дата создания</th>
+                    <th>Права</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Кнопка "В корень проекта" -->
+                <tr class="w3-border-bottom w3-border-dark-grey">
+                    <td><i class="material-icons w3-text-deep-purple">home</i></td>
+                    <td colspan="4">
+                        <a href="{{base_path}}" class="w3-text-white w3-block" style="text-decoration:none;">[ В КОРЕНЬ ПРОЕКТА ]</a>
+                    </td>
+                </tr>
+
+                <!-- Кнопка "Назад" (используем относительный путь) -->
+                <tr class="w3-border-bottom w3-border-dark-grey">
+                    <td><i class="material-icons w3-text-grey">subdirectory_arrow_left</i></td>
+                    <td colspan="4">
+                        <a href="{{path}}../" class="w3-text-white w3-block" style="text-decoration:none;">.. (назад)</a>
+                    </td>
+                </tr>
+
+                <!-- Список файлов и папок -->
+                {{#files}}
+                <tr class="w3-border-bottom w3-border-dark-grey w3-hover-black">
+                    <td>
+                        {{#is_directory}}
+                            <i class="material-icons w3-text-amber">folder</i>
+                        {{/is_directory}}
+                        {{^is_directory}}
+                            <i class="material-icons w3-text-blue">description</i>
+                        {{/is_directory}}
+                    </td>
+                    <td>
+                        {{#is_directory}}
+                            <a href="{{path}}{{entry}}/" class="w3-text-white w3-block" style="text-decoration:none;"><b>{{entry}}</b></a>
+                        {{/is_directory}}
+                        {{^is_directory}}
+                            <span class="w3-text-white">{{entry}}</span>
+                        {{/is_directory}}
+                    </td>
+                    <td class="w3-text-grey">
+                        {{#is_directory}}&lt;DIR&gt;{{/is_directory}}
+                        {{^is_directory}}{{size}} B{{/is_directory}}
+                    </td>
+                    <td class="w3-text-grey">{{create_date}}</td>
+                    <td>
+                        <code class="w3-text-deep-purple">{{permissions}}</code>
+                    </td>
+                </tr>
+                {{/files}}
+
+                {{^files}}
+                <tr>
+                    <td colspan="5" class="w3-center w3-padding-32 w3-text-grey">
+                        <i class="material-icons w3-large">not_interested</i> Директория пуста
+                    </td>
+                </tr>
+                {{/files}}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Инструменты снизу -->
+    <div class="w3-padding-16">
+        <button onclick="location.reload()" class="w3-button w3-border w3-border-deep-purple w3-black w3-hover-deep-purple">
+            <i class="material-icons w3-small">refresh</i> Обновить
+        </button>
+    </div>
+</div>
