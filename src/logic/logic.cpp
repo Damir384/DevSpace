@@ -4,14 +4,38 @@
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include <pwd.h>
+#include <filesystem>
+#include <pty.h>
+#include <utmp.h>
+#include <grp.h>
 
 using Session = crow::SessionMiddleware<crow::InMemoryStore>;
 
 // Добавить парсер настроек из файла конфигурации
 
+std::string pstatus_to_string(ProjectStatus status) {
+    switch (status) {
+        case ProjectStatus::Success:         return "Успех";
+        case ProjectStatus::AlreadyExists:   return "Проект с таким именем уже существует";
+        case ProjectStatus::InvalidName:     return "Недопустимое имя проекта";
+        case ProjectStatus::NameTooLong:     return "Имя проекта слишком длинное";
+        case ProjectStatus::NoPermissions:   return "Ошибка доступа: недостаточно прав в директории проектов";
+        case ProjectStatus::FileSystemError: return "Системная ошибка файловой системы";
+        case ProjectStatus::UnknownError:    return "Произошла неизвестная ошибка";
+        default:                             return "Критическая ошибка";
+    }
+}
+
+struct UserPtyContext {
+    uid_t uid;
+    gid_t gid;
+    std::string home;
+    std::string username;
+    std::string shell;
+};
+
 // Проверка авторизации и сборка базового контекса
 static bool base_context(crow::mustache::context& ctx, Session::context& session) {
-    
     
     auto alerts_raw = session.get("alerts", "[]");
     auto alerts_json = crow::json::load(alerts_raw);
