@@ -4,7 +4,6 @@
 #include "crow/middlewares/cookie_parser.h"
 #include "crow/middlewares/session.h"
 #include <pwd.h>
-#include <filesystem>
 #include <pty.h>
 #include <utmp.h>
 #include <grp.h>
@@ -383,11 +382,11 @@ int App::run(std::string title) {
         pty_masters[&conn] = master;
 
         std::string banner = 
-            "\r\n\x1b[1;35m"
+            "\x1b[1;35m"
             "----------------------------------------------------------\r\n"
-            "  Welcome to DevSpace Terminal [ALPHA]\r\n"
+            "  Welcome to DevSpace Terminal \033[7m[ALPHA]\033[0;1;35m\r\n"
             "  Architect: DevDrafts\r\n"
-            "  GitHub:    https://github.com/ARDamir384/DevSpace\r\n"
+            "  GitHub:    https://github.com/Damir384/DevSpace\r\n"
             "  Warning:   DON'T TYPE COMMAND \"YES\"\r\n"
             "----------------------------------------------------------\r\n"
             "\x1b[0m\r\n";
