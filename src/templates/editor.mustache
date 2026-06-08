@@ -1,0 +1,120 @@
+<div class="w3-black w3-border-bottom w3-border-dark-grey w3-padding-small w3-small d-flex w3-row" style="font-family: monospace; display: flex; align-items: center;"">
+    <div class="w3-col s8">
+        <button type="button" id="back-to-explorer" class="w3-button w3-hover-dark-grey w3-padding-small" style="margin-right: 8px; background: none; border: none; color: inherit; cursor: pointer; display: inline-flex; align-items: center;">
+            <i class="material-icons" style="font-size: 14px; margin-right: 4px;">arrow_back</i>
+            <span style="font-family: monospace;">../</span>
+        </button>
+        <span id="file-status-icon" class="w3-text-green">●</span>
+        <span id="file-name-display" class="w3-margin-left" style="font-weight: bold;"></span>
+        <span id="file-dirty-indicator" class="w3-text-yellow" style="display: none;"> (изменено)</span>
+    </div>
+    <div class="w3-col s4 w3-right-align">
+        <span id="save-status-text" class="w3-margin-left"></span>
+    </div>
+</div>
+<div id="monaco-editor-container" class="w3-card w3-padding-small" style="height: calc(100% - 37px);"></div>
+
+<!-- Секретный бункер с данными из C++ -->
+<script id="file-data-package" type="application/json">
+    {{{file_json_raw}}}
+</script>
+
+<!-- Загрузчик Monaco (используем CDN, если нет локального) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+
+<script>
+    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' }});
+
+    require(['vs/editor/editor.main'], function() {
+        window.isDirty = false; 
+        const rawData = document.getElementById('file-data-package').textContent;
+        const fileData = JSON.parse(rawData);
+
+        const langMap = {
+            'cpp': 'cpp', 'hpp': 'cpp', 'h': 'cpp', 'c': 'cpp',
+            'js': 'javascript', 'json': 'json', 'py': 'python',
+            'sh': 'shell', 'html': 'html', 'css': 'css', 'md': 'markdown'
+        };
+
+        const language = langMap[fileData.extension] || 'plaintext';
+
+        // Инициализация UI элементов
+        const nameDisplay = document.getElementById('file-name-display');
+        const dirtyIndicator = document.getElementById('file-dirty-indicator');
+        const saveStatus = document.getElementById('save-status-text');
+        const statusIcon = document.getElementById('file-status-icon');
+
+        nameDisplay.textContent = fileData.filename;
+
+        window.editor = monaco.editor.create(document.getElementById('monaco-editor-container'), {
+            value: fileData.content,
+            language: language,
+            theme: 'hc-black',
+            automaticLayout: true,
+            fontFamily: 'Fira Code, monospace',
+            fontSize: 14,
+            minimap: { enabled: true },
+            cursorSmoothCaretAnimation: "on",
+            smoothScrolling: true
+        });
+
+        // 1. Отслеживание изменений
+        window.editor.onDidChangeModelContent(() => {
+            if (!window.isDirty) {
+                window.isDirty = true;
+                dirtyIndicator.style.display = 'inline';
+                statusIcon.className = 'w3-text-yellow';
+                saveStatus.textContent = "Нужно сохранить...";
+                document.getElementById('file-dirty-indicator').style.display = 'inline';
+            }
+        });
+
+        // 2. Логика сохранения
+        const saveFile = () => {
+            const currentCode = window.editor.getValue();
+            const saveUrl = "{{{save_url}}}";
+
+            saveStatus.textContent = "Сохранение...";
+            statusIcon.className = 'w3-text-blue w3-spin'; // Анимация загрузки
+
+            fetch(saveUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: currentCode })
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка сервера: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                window.isDirty = false;
+                dirtyIndicator.style.display = 'none';
+                statusIcon.className = 'w3-text-green';
+                saveStatus.textContent = "Сохранено успешно";
+                setTimeout(() => { saveStatus.textContent = ""; }, 3000);
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                statusIcon.className = 'w3-text-red';
+                saveStatus.textContent = "ОШИБКА СОХРАНЕНИЯ";
+                alert("Критический сбой записи: " + error.message);
+            });
+        };
+
+        window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveFile);
+
+        document.getElementById('back-to-explorer').onclick = function() {
+            console.log("Back button pressed. isDirty state:", window.isDirty);
+            
+            if (window.isDirty) {
+                if (confirm("ВНИМАНИЕ: У тебя есть несохраненные изменения! Всё равно свалить назад?")) {
+                    window.history.back();
+                }
+            } else {
+                window.history.back();
+            }
+        };
+
+        console.log("Monaco Core запущен. Файл: " + fileData.filename);
+    });
+</script>
