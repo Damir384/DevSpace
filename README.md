@@ -23,7 +23,7 @@
 
 ```bash
 # Клонирование репозитория
-git clone https://github.com/your-username/DevSpace.git
+git clone https://github.com/Damir384/DevSpace.git
 cd DevSpace
 
 # Подготовка к сборке
